@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+
+# Temporary files
+tmp/
+*.tmp
+
+# Build output
+dist/
+
+# Excel files generated during processing
+gemini_response.xlsx
+
+# IDE specific files
+.vscode/
+.idea/
