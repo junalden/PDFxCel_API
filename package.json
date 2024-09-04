@@ -1,5 +1,5 @@
 {
-  "name": "pdfxcel",
+  "name": "your-project-name",
   "version": "1.0.0",
   "description": "A Node.js project for handling PDF processing, authentication, and data storage.",
   "main": "app.js",
