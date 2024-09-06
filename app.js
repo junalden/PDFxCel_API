@@ -267,7 +267,7 @@ app.get("/api/get-matrix/:matrixId", authenticateToken, async (req, res) => {
 // PDF processing route
 app.post(
   "/api/process-pdf",
-  authenticateToken,
+  // authenticateToken,
   upload.single("file"),
   async (req, res) => {
     if (!req.file) {
