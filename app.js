@@ -327,50 +327,22 @@ app.post(
 const https = require("https"); // Add this line at the beginning if not already imported
 
 // Fetch templates
-app.get("/api/templates", authenticateToken, (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
+app.get("/api/templates", authenticateToken, async (req, res) => {
+  const userId = req.user.userId;
 
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const connection = await pool.getConnection();
+    const query =
+      "SELECT DISTINCT matrix_id FROM matrix_data WHERE user_id = ?";
+    const [results] = await connection.query(query, [userId]);
+    connection.release(); // Release connection back to the pool
+
+    res.status(200).json(results);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error fetching templates", details: error.message });
   }
-
-  // Replace this URL with the correct endpoint if necessary
-  const url = "https://pdfxcel-api.onrender.com/matrix_data";
-
-  // Fetch data from the external API
-  https
-    .get(url, { headers: { Authorization: `Bearer ${token}` } }, (apiRes) => {
-      let data = "";
-
-      apiRes.on("data", (chunk) => {
-        data += chunk;
-      });
-
-      apiRes.on("end", () => {
-        if (apiRes.statusCode === 200) {
-          try {
-            const parsedData = JSON.parse(data);
-            res.status(200).json(parsedData);
-          } catch (e) {
-            res
-              .status(500)
-              .json({
-                error: "Error parsing response data",
-                details: e.message,
-              });
-          }
-        } else {
-          res
-            .status(apiRes.statusCode)
-            .json({
-              error: `Failed to fetch templates, status code: ${apiRes.statusCode}`,
-            });
-        }
-      });
-    })
-    .on("error", (e) => {
-      res.status(500).json({ error: `Error fetching templates: ${e.message}` });
-    });
 });
 
 app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
