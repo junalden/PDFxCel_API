@@ -350,44 +350,34 @@ app.get("/api/templates", (req, res) => {
       res.status(500).json({ error: e.message });
     });
 });
-// Delete template
-app.delete("/api/templates/:id", (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  const templateId = req.params.id;
+app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
 
-  if (!validateToken(token)) {
+  if (!userId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Example URL, replace with actual URL to delete template
-  const url = `https://pdfxcel-api.onrender.com/matrix_data/${templateId}`;
+  try {
+    const connection = await pool.getConnection();
+    const [result] = await connection.query(
+      "DELETE FROM matrix_data WHERE matrix_id = ? AND user_id = ?",
+      [id, userId]
+    );
+    connection.release(); // Release connection back to the pool
 
-  const options = {
-    method: "DELETE",
-  };
-
-  const request = https
-    .request(url, options, (apiResponse) => {
-      // Renamed 'req' to 'request'
-      let data = "";
-      apiResponse.on("data", (chunk) => {
-        data += chunk;
-      });
-      apiResponse.on("end", () => {
-        if (apiResponse.statusCode === 200) {
-          res.status(200).json({ message: "Template deleted successfully" });
-        } else {
-          res
-            .status(apiResponse.statusCode)
-            .json({ error: "Failed to delete template" });
-        }
-      });
-    })
-    .on("error", (e) => {
-      res.status(500).json({ error: e.message });
-    });
-
-  request.end();
+    if (result.affectedRows > 0) {
+      res.status(200).json({ message: "Template deleted successfully" });
+    } else {
+      res
+        .status(404)
+        .json({ error: "Template not found or not owned by user" });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error deleting template", details: error.message });
+  }
 });
 
 // Start the server
