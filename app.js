@@ -336,12 +336,13 @@ app.get("/api/templates", (req, res) => {
   const url = "https://pdfxcel-api.onrender.com/matrix_data";
 
   https
-    .get(url, (apiRes) => {
+    .get(url, (apiResponse) => {
+      // Renamed 'apiRes' to 'apiResponse'
       let data = "";
-      apiRes.on("data", (chunk) => {
+      apiResponse.on("data", (chunk) => {
         data += chunk;
       });
-      apiRes.on("end", () => {
+      apiResponse.on("end", () => {
         res.json(JSON.parse(data));
       });
     })
@@ -349,7 +350,6 @@ app.get("/api/templates", (req, res) => {
       res.status(500).json({ error: e.message });
     });
 });
-
 // Delete template
 app.delete("/api/templates/:id", (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -366,18 +366,19 @@ app.delete("/api/templates/:id", (req, res) => {
     method: "DELETE",
   };
 
-  const req = https
-    .request(url, options, (apiRes) => {
+  const request = https
+    .request(url, options, (apiResponse) => {
+      // Renamed 'req' to 'request'
       let data = "";
-      apiRes.on("data", (chunk) => {
+      apiResponse.on("data", (chunk) => {
         data += chunk;
       });
-      apiRes.on("end", () => {
-        if (apiRes.statusCode === 200) {
+      apiResponse.on("end", () => {
+        if (apiResponse.statusCode === 200) {
           res.status(200).json({ message: "Template deleted successfully" });
         } else {
           res
-            .status(apiRes.statusCode)
+            .status(apiResponse.statusCode)
             .json({ error: "Failed to delete template" });
         }
       });
@@ -386,7 +387,7 @@ app.delete("/api/templates/:id", (req, res) => {
       res.status(500).json({ error: e.message });
     });
 
-  req.end();
+  request.end();
 });
 
 // Start the server
