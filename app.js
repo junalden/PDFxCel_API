@@ -324,32 +324,55 @@ app.post(
   }
 );
 
+const https = require("https"); // Add this line at the beginning if not already imported
+
 // Fetch templates
-app.get("/api/templates", (req, res) => {
+app.get("/api/templates", authenticateToken, (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
 
-  if (!validateToken(token)) {
+  if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Example URL, replace with actual URL to fetch templates
+  // Replace this URL with the correct endpoint if necessary
   const url = "https://pdfxcel-api.onrender.com/matrix_data";
 
+  // Fetch data from the external API
   https
-    .get(url, (apiResponse) => {
-      // Renamed 'apiRes' to 'apiResponse'
+    .get(url, { headers: { Authorization: `Bearer ${token}` } }, (apiRes) => {
       let data = "";
-      apiResponse.on("data", (chunk) => {
+
+      apiRes.on("data", (chunk) => {
         data += chunk;
       });
-      apiResponse.on("end", () => {
-        res.json(JSON.parse(data));
+
+      apiRes.on("end", () => {
+        if (apiRes.statusCode === 200) {
+          try {
+            const parsedData = JSON.parse(data);
+            res.status(200).json(parsedData);
+          } catch (e) {
+            res
+              .status(500)
+              .json({
+                error: "Error parsing response data",
+                details: e.message,
+              });
+          }
+        } else {
+          res
+            .status(apiRes.statusCode)
+            .json({
+              error: `Failed to fetch templates, status code: ${apiRes.statusCode}`,
+            });
+        }
       });
     })
     .on("error", (e) => {
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: `Error fetching templates: ${e.message}` });
     });
 });
+
 app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
