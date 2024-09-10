@@ -376,7 +376,7 @@ app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
 });
 
 // Change Email
-app.put("/change-email", authenticateToken, async (req, res) => {
+app.put("/api/change-email", authenticateToken, async (req, res) => {
   const { newEmail } = req.body;
   const { userId } = req.user;
 
@@ -398,7 +398,7 @@ app.put("/change-email", authenticateToken, async (req, res) => {
 });
 
 // Change Password
-app.put("/change-password", authenticateToken, async (req, res) => {
+app.put("/api/change-password", authenticateToken, async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const { userId } = req.user;
 
