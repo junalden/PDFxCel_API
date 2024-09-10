@@ -410,7 +410,6 @@ app.put("/change-password", authenticateToken, async (req, res) => {
 
   try {
     const connection = await pool.getConnection();
-
     // Fetch current password hash from database
     const [rows] = await connection.query(
       "SELECT password FROM users WHERE id = ?",
@@ -442,6 +441,7 @@ app.put("/change-password", authenticateToken, async (req, res) => {
 
     res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
+    console.error("Error updating password:", error);
     res.status(500).json({ error: "Failed to update password" });
   }
 });
