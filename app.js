@@ -324,51 +324,69 @@ app.post(
   }
 );
 
-// Route to get user's templates
-app.get("/api/templates", authenticateToken, async (req, res) => {
-  const { user_id } = req.user;
+// Fetch templates
+app.get("/api/templates", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
-  try {
-    // Fetch templates from PDFXcel API
-    const response = await axios.get(
-      "https://pdfxcel-api.onrender.com/matrix_data",
-      {
-        params: { user_id: user_id },
-        headers: { Authorization: `Bearer ${process.env.PDFXCEL_API_KEY}` }, // If API key is needed
-      }
-    );
-
-    res.json(response.data);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error fetching data from PDFXcel API");
+  if (!validateToken(token)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
+
+  // Example URL, replace with actual URL to fetch templates
+  const url = "https://pdfxcel-api.onrender.com/matrix_data";
+
+  https
+    .get(url, (apiRes) => {
+      let data = "";
+      apiRes.on("data", (chunk) => {
+        data += chunk;
+      });
+      apiRes.on("end", () => {
+        res.json(JSON.parse(data));
+      });
+    })
+    .on("error", (e) => {
+      res.status(500).json({ error: e.message });
+    });
 });
 
-// Route to delete a template
-app.delete("/api/templates/:matrixId", authenticateToken, async (req, res) => {
-  const { matrixId } = req.params;
-  const { user_id } = req.user;
+// Delete template
+app.delete("/api/templates/:id", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  const templateId = req.params.id;
 
-  try {
-    // Delete template using PDFXcel API
-    const response = await axios.delete(
-      "https://pdfxcel-api.onrender.com/matrix_data",
-      {
-        data: { matrix_id: matrixId, user_id: user_id },
-        headers: { Authorization: `Bearer ${process.env.PDFXCEL_API_KEY}` }, // If API key is needed
-      }
-    );
-
-    if (response.status === 200) {
-      res.status(200).send("Template deleted successfully");
-    } else {
-      res.status(response.status).send("Failed to delete template");
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error deleting data from PDFXcel API");
+  if (!validateToken(token)) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
+
+  // Example URL, replace with actual URL to delete template
+  const url = `https://pdfxcel-api.onrender.com/matrix_data/${templateId}`;
+
+  const options = {
+    method: "DELETE",
+  };
+
+  const req = https
+    .request(url, options, (apiRes) => {
+      let data = "";
+      apiRes.on("data", (chunk) => {
+        data += chunk;
+      });
+      apiRes.on("end", () => {
+        if (apiRes.statusCode === 200) {
+          res.status(200).json({ message: "Template deleted successfully" });
+        } else {
+          res
+            .status(apiRes.statusCode)
+            .json({ error: "Failed to delete template" });
+        }
+      });
+    })
+    .on("error", (e) => {
+      res.status(500).json({ error: e.message });
+    });
+
+  req.end();
 });
 
 // Start the server
