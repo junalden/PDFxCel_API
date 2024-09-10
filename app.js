@@ -325,7 +325,7 @@ app.post(
 );
 
 // Route to get user's templates
-app.get("/api/templates", authenticateJWT, async (req, res) => {
+app.get("/api/templates", authenticateToken, async (req, res) => {
   const { user_id } = req.user;
 
   try {
@@ -346,7 +346,7 @@ app.get("/api/templates", authenticateJWT, async (req, res) => {
 });
 
 // Route to delete a template
-app.delete("/api/templates/:matrixId", authenticateJWT, async (req, res) => {
+app.delete("/api/templates/:matrixId", authenticateToken, async (req, res) => {
   const { matrixId } = req.params;
   const { user_id } = req.user;
 
