@@ -375,6 +375,77 @@ app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// Change Email
+router.put("/change-email", authenticateToken, async (req, res) => {
+  const { newEmail } = req.body;
+  const { userId } = req.user;
+
+  if (!newEmail) {
+    return res.status(400).json({ error: "New email is required" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.query("UPDATE users SET email = ? WHERE id = ?", [
+      newEmail,
+      userId,
+    ]);
+    connection.release();
+    res.status(200).json({ message: "Email updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update email" });
+  }
+});
+
+// Change Password
+router.put("/change-password", authenticateToken, async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const { userId } = req.user;
+
+  if (!oldPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ error: "Both old and new passwords are required" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+
+    // Fetch current password hash from database
+    const [rows] = await connection.query(
+      "SELECT password FROM users WHERE id = ?",
+      [userId]
+    );
+    connection.release();
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const currentPasswordHash = rows[0].password;
+
+    // Check if the old password is correct
+    const match = await bcrypt.compare(oldPassword, currentPasswordHash);
+
+    if (!match) {
+      return res.status(401).json({ error: "Incorrect old password" });
+    }
+
+    // Hash new password and update it in the database
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const connection2 = await pool.getConnection();
+    await connection2.query("UPDATE users SET password = ? WHERE id = ?", [
+      newPasswordHash,
+      userId,
+    ]);
+    connection2.release();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
