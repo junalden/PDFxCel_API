@@ -324,6 +324,53 @@ app.post(
   }
 );
 
+// Route to get user's templates
+app.get("/api/templates", authenticateJWT, async (req, res) => {
+  const { user_id } = req.user;
+
+  try {
+    // Fetch templates from PDFXcel API
+    const response = await axios.get(
+      "https://pdfxcel-api.onrender.com/matrix_data",
+      {
+        params: { user_id: user_id },
+        headers: { Authorization: `Bearer ${process.env.PDFXCEL_API_KEY}` }, // If API key is needed
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching data from PDFXcel API");
+  }
+});
+
+// Route to delete a template
+app.delete("/api/templates/:matrixId", authenticateJWT, async (req, res) => {
+  const { matrixId } = req.params;
+  const { user_id } = req.user;
+
+  try {
+    // Delete template using PDFXcel API
+    const response = await axios.delete(
+      "https://pdfxcel-api.onrender.com/matrix_data",
+      {
+        data: { matrix_id: matrixId, user_id: user_id },
+        headers: { Authorization: `Bearer ${process.env.PDFXCEL_API_KEY}` }, // If API key is needed
+      }
+    );
+
+    if (response.status === 200) {
+      res.status(200).send("Template deleted successfully");
+    } else {
+      res.status(response.status).send("Failed to delete template");
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error deleting data from PDFXcel API");
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
