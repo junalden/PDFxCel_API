@@ -97,7 +97,7 @@ function saveMarkdownToExcel(markdownText, filePath) {
     XLSX.utils.book_append_sheet(
       workbook,
       XLSX.utils.aoa_to_sheet(worksheet),
-      "Gemini API Results"
+      "PDFxCel Results"
     );
     XLSX.writeFile(workbook, filePath);
     return;
@@ -122,7 +122,7 @@ function saveMarkdownToExcel(markdownText, filePath) {
   XLSX.utils.book_append_sheet(
     workbook,
     XLSX.utils.aoa_to_sheet(worksheet),
-    "Gemini API Results"
+    "PDFxCel Results"
   );
   XLSX.writeFile(workbook, filePath);
 }
