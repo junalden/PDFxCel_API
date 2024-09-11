@@ -308,7 +308,7 @@ app.post(
           .json({ error: "No content found in API response." });
       }
 
-      const excelFilePath = path.join("tmp", "gemini_response.xlsx");
+      const excelFilePath = path.join("tmp", "PDFxCel_result.xlsx");
       saveMarkdownToExcel(markdownText, excelFilePath);
 
       res.download(excelFilePath, "PDFxCel Result.xlsx", (err) => {
