@@ -13,7 +13,7 @@ require("dotenv").config();
 const {
   GoogleAIFileManager,
   GoogleGenerativeAI,
-} = require("@google/generative-ai/server");
+} = require("@google/generative-ai");
 
 const app = express();
 const port = process.env.PORT || 5000;
