@@ -513,6 +513,7 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 // });
 
 // Start the server
+
 app.post("/api/upload-file", upload.array("files"), async (req, res) => {
   console.log("Received files:", req.files);
 
@@ -532,7 +533,7 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
             displayName: file.originalname,
           });
           console.log(`File uploaded. URI: ${response.file.uri}`);
-          return response.file.uri;
+          return { uri: response.file.uri }; // Ensure the object has the uri property
         } catch (error) {
           console.error(
             `Error uploading file ${file.originalname}:`,
@@ -543,6 +544,8 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
       })
     );
 
+    console.log("Upload responses:", uploadResponses);
+
     // Check for any failed uploads
     const failedUploads = uploadResponses.filter((response) => response.error);
     if (failedUploads.length > 0) {
@@ -552,15 +555,22 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
         .json({ error: "File upload failed", details: failedUploads });
     }
 
-    console.log("All files uploaded successfully. URIs:", uploadResponses);
+    // Filter out any undefined URIs and verify valid URIs
+    const fileUris = uploadResponses
+      .filter((response) => response.uri) // Ensure we only have valid URIs
+      .map((response) => response.uri);
+
+    console.log("File URIs for Gemini API:", fileUris);
 
     // Retrieve the prompt from the request body
     const prompt = req.body.prompts || "Can you summarize this document?";
     console.log("Using prompt:", prompt);
 
     // Prepare the Gemini API request
-    const fileUris = uploadResponses.map((response) => response.uri);
-    console.log("File URIs for Gemini API:", fileUris);
+    if (fileUris.length === 0) {
+      console.error("No valid file URIs to send to Gemini API");
+      return res.status(400).json({ error: "No valid file URIs" });
+    }
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     console.log("Generating content with Gemini API...");
