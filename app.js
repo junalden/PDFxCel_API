@@ -130,13 +130,21 @@ function saveMarkdownToExcel(markdownText, filePath) {
 // Middleware to handle file uploads
 const upload = multer({ dest: "tmp/" });
 
-// New API route for file upload and processing
+// API route for file upload and processing
 app.post("/api/upload-file", upload.array("files"), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
 
   try {
+    // Parse prompts from the request body
+    let prompts = [];
+    try {
+      prompts = JSON.parse(req.body.prompts);
+    } catch (error) {
+      return res.status(400).json({ error: "Prompts are not valid JSON." });
+    }
+
     // Process each file
     for (const file of req.files) {
       if (path.extname(file.originalname) !== ".pdf") {
@@ -144,7 +152,6 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
       }
 
       const pdfText = await extractTextFromPdf(file.path);
-      const prompts = req.body.prompts ? JSON.parse(req.body.prompts) : [];
 
       let customText = "Make me a summary in table format:\n";
       for (const row of prompts) {
