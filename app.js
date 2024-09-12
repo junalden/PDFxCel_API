@@ -447,43 +447,6 @@ app.put("/api/change-password", authenticateToken, async (req, res) => {
   }
 });
 
-// New API endpoint for handling multiple file uploads
-app.post("/api/upload-files", upload.array("files"), async (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: "No files uploaded" });
-  }
-
-  try {
-    const fileManager = new GoogleAIFileManager(process.env.API_KEY);
-
-    const uploadResponses = await Promise.all(
-      req.files.map(async (file) => {
-        try {
-          const response = await fileManager.uploadFile(file.path, {
-            mimeType: file.mimetype,
-            displayName: file.originalname,
-          });
-          return { success: true, file: file.originalname, response };
-        } catch (error) {
-          return {
-            success: false,
-            file: file.originalname,
-            error: error.message,
-          };
-        }
-      })
-    );
-
-    // Respond with the results of the upload
-    res.status(200).json(uploadResponses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  } finally {
-    // Clean up the uploaded files
-    req.files.forEach((file) => fs.unlinkSync(file.path));
-  }
-});
-
 // Initialize GoogleAIFileManager and GoogleGenerativeAI with your API_KEY
 const fileManager = new GoogleAIFileManager(process.env.API_KEY);
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
