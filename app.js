@@ -12,10 +12,7 @@ const XLSX = require("xlsx");
 require("dotenv").config();
 const { GoogleAIFileManager } = require("@google/generative-ai/server");
 
-const {
-  GoogleAIFileManager,
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 const port = process.env.PORT || 5000;
