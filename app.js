@@ -10,6 +10,8 @@ const path = require("path");
 const pdfParse = require("pdf-parse");
 const XLSX = require("xlsx");
 require("dotenv").config();
+const { GoogleAIFileManager } = require("@google/generative-ai/server");
+
 const {
   GoogleAIFileManager,
   GoogleGenerativeAI,
