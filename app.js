@@ -451,6 +451,69 @@ app.put("/api/change-password", authenticateToken, async (req, res) => {
 const fileManager = new GoogleAIFileManager(process.env.API_KEY);
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
+// app.post("/api/upload-file", upload.array("files"), async (req, res) => {
+//   if (!req.files || req.files.length === 0) {
+//     return res.status(400).json({ error: "No files uploaded" });
+//   }
+
+//   try {
+//     // Upload the files and get their URIs
+//     const uploadResponses = await Promise.all(
+//       req.files.map(async (file) => {
+//         try {
+//           const response = await fileManager.uploadFile(file.path, {
+//             mimeType: file.mimetype,
+//             displayName: file.originalname,
+//           });
+//           return response.file.uri;
+//         } catch (error) {
+//           return { error: error.message };
+//         }
+//       })
+//     );
+
+//     // Check for any failed uploads
+//     const failedUploads = uploadResponses.filter((response) => response.error);
+//     if (failedUploads.length > 0) {
+//       return res
+//         .status(400)
+//         .json({ error: "File upload failed", details: failedUploads });
+//     }
+
+//     // Retrieve the prompt from the request body
+//     const prompt = req.body.prompts || "Can you summarize this document?";
+
+//     // Prepare the Gemini API request
+//     const fileUris = uploadResponses.map((response) => response.uri);
+//     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+//     const result = await model.generateContent([
+//       ...fileUris.map((uri) => ({
+//         fileData: { mimeType: "application/pdf", fileUri: uri },
+//       })),
+//       { text: prompt },
+//     ]);
+
+//     // Extract and save the summary to an Excel file
+//     const summaryText = result.response.text();
+//     const excelFilePath = path.join("tmp", "PDFxCel_Result.xlsx");
+//     saveMarkdownToExcel(summaryText, excelFilePath);
+
+//     // Send the Excel file to the client
+//     res.download(excelFilePath, "PDFxCel_Result.xlsx", (err) => {
+//       if (err) {
+//         console.error(err);
+//       }
+//       // Clean up uploaded and generated files
+//       req.files.forEach((file) => fs.unlinkSync(file.path));
+//       fs.unlinkSync(excelFilePath);
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+// Start the server
+
 app.post("/api/upload-file", upload.array("files"), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
@@ -512,7 +575,6 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
   }
 });
 
-// Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
