@@ -10,6 +10,10 @@ const path = require("path");
 const pdfParse = require("pdf-parse");
 const XLSX = require("xlsx");
 require("dotenv").config();
+const {
+  GoogleAIFileManager,
+  GoogleGenerativeAI,
+} = require("@google/generative-ai/server");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -208,10 +212,8 @@ app.post("/api/save-matrix", authenticateToken, async (req, res) => {
       row.transformation,
     ]);
 
-    const query = `
-      INSERT INTO matrix_data (user_id, matrix_id, column_name, transformation)
-      VALUES ?
-    `;
+    const query =
+      "INSERT INTO matrix_data (user_id, matrix_id, column_name, transformation) VALUES ?";
     await connection.query(query, [values]);
     connection.release(); // Release connection back to the pool
 
@@ -446,72 +448,40 @@ app.put("/api/change-password", authenticateToken, async (req, res) => {
   }
 });
 
-const app = express();
-const upload = multer({ dest: "tmp/" }); // Directory to store uploaded files
-
-// API route to process PDF and return result as Excel
-app.post("/api/process-pdf", upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file part" });
-  }
-
-  if (path.extname(req.file.originalname) !== ".pdf") {
-    return res
-      .status(400)
-      .json({ error: "Invalid file type. Only PDF files are allowed." });
+// New API endpoint for handling multiple file uploads
+app.post("/api/upload-files", upload.array("files"), async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No files uploaded" });
   }
 
   try {
-    // Read the uploaded PDF file
-    const filePath = req.file.path;
+    const fileManager = new GoogleAIFileManager(process.env.API_KEY);
 
-    // Read the file into a buffer
-    const fileBuffer = fs.readFileSync(filePath);
-
-    // Create a form data object to send the file to Gemini
-    const formData = new FormData();
-    formData.append("file", fileBuffer, req.file.originalname);
-
-    // Gemini API request
-    const geminiResponse = await axios.post(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.API_KEY}`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-          "Content-Type": "multipart/form-data",
-        },
-      }
+    const uploadResponses = await Promise.all(
+      req.files.map(async (file) => {
+        try {
+          const response = await fileManager.uploadFile(file.path, {
+            mimeType: file.mimetype,
+            displayName: file.originalname,
+          });
+          return { success: true, file: file.originalname, response };
+        } catch (error) {
+          return {
+            success: false,
+            file: file.originalname,
+            error: error.message,
+          };
+        }
+      })
     );
 
-    if (geminiResponse.data.error) {
-      return res.status(400).json(geminiResponse.data);
-    }
-
-    const candidates = geminiResponse.data.candidates || [{}];
-    const parts = candidates[0].content?.parts || [{}];
-    const markdownText = parts[0]?.text || "";
-
-    if (!markdownText) {
-      return res
-        .status(400)
-        .json({ error: "No content found in API response." });
-    }
-
-    // Save the markdown text to Excel
-    const excelFilePath = path.join("tmp", "PDFxCel_result.xlsx");
-    saveMarkdownToExcel(markdownText, excelFilePath);
-
-    // Send the Excel file as response
-    res.download(excelFilePath, "PDFxCel_Result.xlsx", (err) => {
-      if (err) {
-        console.error(err);
-      }
-      fs.unlinkSync(req.file.path); // Clean up the uploaded file
-      fs.unlinkSync(excelFilePath); // Clean up the generated Excel file
-    });
+    // Respond with the results of the upload
+    res.status(200).json(uploadResponses);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  } finally {
+    // Clean up the uploaded files
+    req.files.forEach((file) => fs.unlinkSync(file.path));
   }
 });
 
