@@ -671,95 +671,97 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
 //   }
 // });
 
-const fetch = require("node-fetch"); // Assuming you're using node-fetch for API calls
-
-// 1. Function to process the image with Gemini
+// Function to process the image with Gemini API
 async function processWithGemini(imagePath, prompt) {
   try {
-    const response = await fetch("https://gemini-api-endpoint.com/process", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image: imagePath,
-        prompt: prompt,
-      }),
-    });
+    const formData = new FormData();
+    formData.append("file", fs.createReadStream(imagePath));
+    formData.append("prompt", prompt);
 
-    if (!response.ok) {
-      throw new Error(`Error: ${response.statusText}`);
-    }
+    const response = await axios.post(
+      "https://gemini-api-url.com/process",
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+        },
+      }
+    );
 
-    const data = await response.json();
-    return data;
+    return response.data;
   } catch (error) {
-    console.error("Gemini API error:", error);
-    throw error;
+    console.error("Error in Gemini API:", error);
+    throw new Error("Gemini API request failed");
   }
 }
 
-// 2. Function to detect document type
+// Function to detect document type
 async function detectDocumentType(imagePath) {
   const initialPrompt = "Return Document TYPE. no other text.";
+  const result = await processWithGemini(imagePath, initialPrompt);
 
-  try {
-    // First submission: Determine document type
-    const docTypeResult = await processWithGemini(imagePath, initialPrompt);
-    const docType = docTypeResult.documentType;
-
-    if (!docType) {
-      throw new Error("Document type not detected.");
-    }
-
-    // Step 3: Fetch corresponding prompt from the DB
-    const fetchedPrompt = await fetchPromptFromDB(docType);
-
-    if (!fetchedPrompt) {
-      throw new Error("Document type not found in the database.");
-    }
-
-    // Step 4: Re-read the image with the fetched prompt
-    const finalResult = await processWithGemini(imagePath, fetchedPrompt);
-
-    // Return the final processed result
-    return finalResult;
-  } catch (error) {
-    console.error("Error during document processing:", error);
-    throw error;
-  }
+  return result.trim(); // Assume Gemini returns the document type as plain text
 }
 
-// 3. Function to fetch prompt from the database
-async function fetchPromptFromDB(docType) {
-  // Example database query
-  const query = `SELECT prompt_template FROM DocumentPromptsPTS WHERE document_type = ?`;
-  const [rows] = await db.query(query, [docType]);
+// Function to fetch the prompt from the DB based on document type
+async function fetchPrompt(documentType) {
+  const connection = await mysql.createConnection(dbConfig);
+  const [rows] = await connection.execute(
+    "SELECT prompt_template FROM DocumentPromptsPTS WHERE document_type = ?",
+    [documentType]
+  );
 
-  if (rows.length > 0) {
-    return rows[0].prompt_template;
-  } else {
-    return null;
-  }
+  await connection.end();
+
+  return rows.length > 0 ? rows[0].prompt_template : null;
 }
 
-// Endpoint to handle image uploads
+// Function to process the image with the fetched prompt
+async function processWithPrompt(imagePath, prompt) {
+  const result = await processWithGemini(imagePath, prompt);
+  return result;
+}
+
+// Image upload route
 app.post("/api/upload-image", upload.single("image"), async (req, res) => {
   try {
     const imagePath = req.file.path;
 
-    // Step 1: Detect document type and reprocess with prompt
-    const processedData = await detectDocumentType(imagePath);
+    // STEP 1: Detect document type with the first Gemini API call
+    const documentType = await detectDocumentType(imagePath);
 
-    res.json({
+    if (!documentType) {
+      return res
+        .status(400)
+        .json({ message: "Unable to detect document type." });
+    }
+
+    console.log("Detected Document Type:", documentType);
+
+    // STEP 2: Fetch the corresponding prompt for the document type from the database
+    const prompt = await fetchPrompt(documentType);
+
+    if (!prompt) {
+      return res
+        .status(400)
+        .json({
+          message: `No prompt found for document type: ${documentType}`,
+        });
+    }
+
+    console.log("Fetched Prompt:", prompt);
+
+    // STEP 3: Reprocess the image with the new prompt using the second Gemini API call
+    const finalResult = await processWithPrompt(imagePath, prompt);
+
+    return res.status(200).json({
       message: "Image processed successfully",
-      data: processedData,
+      documentType: documentType,
+      result: finalResult,
     });
   } catch (error) {
-    res.status(500).json({
-      message: "Error during image processing",
-      error: error.message,
-    });
+    console.error("Error during image processing:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
 
