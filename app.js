@@ -754,7 +754,7 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
       mimeType: req.file.mimetype,
       displayName: req.file.originalname,
     });
-    const imageUri = response.file.uri; // Get the image URI from the response
+    const imageUri = response.file.uri;
     console.log(`Image uploaded. URI: ${imageUri}`);
 
     // Step 2: Detect document type with Gemini API
@@ -767,12 +767,14 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
       { text: initialPrompt },
     ]);
 
-    const detectedType = result.response.text();
+    // Trim and clean up the detected type to avoid any issues
+    let detectedType = result.response.text().trim();
     console.log("Detected document type:", detectedType);
 
     // Step 3: Fetch prompt based on detected document type
+    // Use LOWER() in both the detected type and query for case-insensitive comparison
     const [rows] = await pool.query(
-      "SELECT prompt_template FROM DocumentPromptsPTS WHERE document_type = ?",
+      "SELECT prompt_template FROM DocumentPromptsPTS WHERE LOWER(document_type) = LOWER(?)",
       [detectedType]
     );
 
@@ -780,7 +782,9 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
       console.error("No matching document type found for:", detectedType);
       return res
         .status(404)
-        .json({ error: "No matching document type found." });
+        .json({
+          error: `No matching document type found for: ${detectedType}`,
+        });
     }
 
     const promptFromDB = rows[0].prompt_template;
