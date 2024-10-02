@@ -623,6 +623,54 @@ app.post("/api/upload-file", upload.array("files"), async (req, res) => {
   }
 });
 
+// Additional image upload route
+app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+  console.log("Received image:", req.file);
+
+  if (!req.file) {
+    console.error("No image uploaded");
+    return res.status(400).json({ error: "No image uploaded" });
+  }
+
+  try {
+    // Upload the image file and get its URI
+    const response = await fileManager.uploadFile(req.file.path, {
+      mimeType: req.file.mimetype,
+      displayName: req.file.originalname,
+    });
+    const imageUri = response.file.uri; // Get the image URI from the response
+    console.log(`Image uploaded. URI: ${imageUri}`);
+
+    // Retrieve the prompt from the request body
+    const prompt = req.body.prompts || "What can you tell me about this image?";
+    console.log("Using prompt:", prompt);
+
+    // Prepare the Gemini API request
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log("Generating content with Gemini API...");
+
+    const result = await model.generateContent([
+      {
+        fileData: { mimeType: req.file.mimetype, fileUri: imageUri },
+      },
+      { text: prompt },
+    ]);
+
+    console.log("Received response from Gemini API:", result.response.text());
+
+    // Send the response back to the client
+    res.status(200).json({ summary: result.response.text() });
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+  } catch (error) {
+    console.error("Error processing image:", error.message);
+    res
+      .status(500)
+      .json({ error: "Failed to process image", details: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
