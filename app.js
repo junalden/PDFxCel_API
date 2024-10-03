@@ -813,6 +813,34 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
   }
 });
 
+// FTP upload function
+async function uploadToFtp(localFilePath, remoteFileName) {
+  const client = new ftp.Client();
+  client.ftp.verbose = true; // Optional: verbose logs for debugging
+
+  try {
+    await client.access({
+      host: "gator4128.hostgator.com",
+      user: "PTS@technoti.net",
+      password: "your_password",
+      secure: false, // Set to true if you're using FTPS
+    });
+
+    console.log("Connected to FTP server");
+
+    await client.uploadFrom(localFilePath, remoteFileName);
+    console.log(`File uploaded to FTP: ${remoteFileName}`);
+
+    client.close();
+    return `ftp://gator4128.hostgator.com/${remoteFileName}`; // Return the FTP URL
+  } catch (err) {
+    console.error("FTP upload failed:", err);
+    client.close();
+    throw new Error("FTP upload failed");
+  }
+}
+
+// API to handle saving data and uploading image to FTP
 app.post("/api/save-data", upload.none(), async (req, res) => {
   const { imageName, documentType, summary } = req.body;
 
@@ -821,12 +849,25 @@ app.post("/api/save-data", upload.none(), async (req, res) => {
   }
 
   try {
+    // Define the path to the locally stored file
+    const localFilePath = path.join(__dirname, "uploads", imageName);
+    const remoteFileName = `${Date.now()}_${imageName}`;
+
+    // Upload the image to the FTP server
+    const ftpUrl = await uploadToFtp(localFilePath, remoteFileName);
+
+    // Save data to MySQL database
     const [result] = await pool.query(
       "INSERT INTO ProcessedDocuments (image_name, image_uri, document_type, summary) VALUES (?, ?, ?, ?)",
-      [imageName, `/uploads/${imageName}`, documentType, summary]
+      [imageName, ftpUrl, documentType, summary]
     );
 
-    res.status(200).json({ message: "Data saved successfully" });
+    // Delete local file after successful upload and saving
+    fs.unlinkSync(localFilePath);
+
+    res
+      .status(200)
+      .json({ message: "Data saved and image uploaded successfully", ftpUrl });
   } catch (error) {
     console.error("Error saving data:", error);
     res.status(500).json({ error: "Failed to save data" });
