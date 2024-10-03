@@ -767,12 +767,10 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
       { text: initialPrompt },
     ]);
 
-    // Trim and clean up the detected type to avoid any issues
     let detectedType = result.response.text().trim();
     console.log("Detected document type:", detectedType);
 
     // Step 3: Fetch prompt based on detected document type
-    // Use LOWER() in both the detected type and query for case-insensitive comparison
     const [rows] = await pool.query(
       "SELECT prompt_template FROM DocumentPromptsPTS WHERE LOWER(document_type) = LOWER(?)",
       [detectedType]
@@ -780,11 +778,9 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
 
     if (rows.length === 0) {
       console.error("No matching document type found for:", detectedType);
-      return res
-        .status(404)
-        .json({
-          error: `No matching document type found for: ${detectedType}`,
-        });
+      return res.status(404).json({
+        error: `No matching document type found for: ${detectedType}`,
+      });
     }
 
     const promptFromDB = rows[0].prompt_template;
@@ -797,13 +793,14 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
       { text: promptFromDB },
     ]);
 
-    console.log(
-      "Received response from Gemini API:",
-      secondResult.response.text()
-    );
+    const summary = secondResult.response.text().trim();
+    console.log("Received response from Gemini API:", summary);
 
-    // Send the final response back to the client
-    res.status(200).json({ summary: secondResult.response.text() });
+    // Send the final response back to the client with the detected type
+    res.status(200).json({
+      detectedType,
+      summary,
+    });
 
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
