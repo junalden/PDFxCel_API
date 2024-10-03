@@ -1,3 +1,4 @@
+const ftp = require("basic-ftp");
 const express = require("express");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
@@ -809,6 +810,26 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to process image", details: error.message });
+  }
+});
+
+app.post("/api/save-data", upload.none(), async (req, res) => {
+  const { imageName, documentType, summary } = req.body;
+
+  if (!imageName || !documentType || !summary) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    const [result] = await pool.query(
+      "INSERT INTO ProcessedDocuments (image_name, image_uri, document_type, summary) VALUES (?, ?, ?, ?)",
+      [imageName, `/uploads/${imageName}`, documentType, summary]
+    );
+
+    res.status(200).json({ message: "Data saved successfully" });
+  } catch (error) {
+    console.error("Error saving data:", error);
+    res.status(500).json({ error: "Failed to save data" });
   }
 });
 
