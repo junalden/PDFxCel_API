@@ -813,17 +813,16 @@ app.post("/api/upload-image", upload.single("image"), async (req, res) => {
   }
 });
 
-// FTP upload function
 async function uploadToFtp(localFilePath, remoteFileName) {
   const client = new ftp.Client();
-  client.ftp.verbose = true; // Optional: verbose logs for debugging
+  client.ftp.verbose = true; // Optional: enable verbose logging
 
   try {
     await client.access({
       host: "gator4128.hostgator.com",
       user: "PTS@technoti.net",
-      password: "Jejemon18@",
-      secure: false, // Set to true if you're using FTPS
+      password: "your_password",
+      secure: false, // Use true if your FTP server requires FTPS
     });
 
     console.log("Connected to FTP server");
@@ -832,7 +831,7 @@ async function uploadToFtp(localFilePath, remoteFileName) {
     console.log(`File uploaded to FTP: ${remoteFileName}`);
 
     client.close();
-    return `ftp://gator4128.hostgator.com/${remoteFileName}`; // Return the FTP URL
+    return `ftp://gator4128.hostgator.com/${remoteFileName}`; // Return FTP URL
   } catch (err) {
     console.error("FTP upload failed:", err);
     client.close();
@@ -840,29 +839,28 @@ async function uploadToFtp(localFilePath, remoteFileName) {
   }
 }
 
-// API to handle saving data and uploading image to FTP
-app.post("/api/save-data", upload.none(), async (req, res) => {
-  const { imageName, documentType, summary } = req.body;
+// API to handle saving data and uploading image to FTP when "SAVE" is clicked
+app.post("/api/save-data", upload.single("image"), async (req, res) => {
+  const { documentType, summary } = req.body;
 
-  if (!imageName || !documentType || !summary) {
+  if (!req.file || !documentType || !summary) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  try {
-    // Define the path to the locally stored file
-    const localFilePath = path.join(__dirname, "uploads", imageName);
-    const remoteFileName = `${Date.now()}_${imageName}`;
+  const localFilePath = req.file.path; // Get the local path of the uploaded file
+  const remoteFileName = `${Date.now()}_${req.file.originalname}`; // Generate a remote file name for FTP
 
+  try {
     // Upload the image to the FTP server
     const ftpUrl = await uploadToFtp(localFilePath, remoteFileName);
 
     // Save data to MySQL database
     const [result] = await pool.query(
       "INSERT INTO ProcessedDocuments (image_name, image_uri, document_type, summary) VALUES (?, ?, ?, ?)",
-      [imageName, ftpUrl, documentType, summary]
+      [req.file.originalname, ftpUrl, documentType, summary]
     );
 
-    // Delete local file after successful upload and saving
+    // Delete the local file after successful upload and save
     fs.unlinkSync(localFilePath);
 
     res
@@ -873,7 +871,6 @@ app.post("/api/save-data", upload.none(), async (req, res) => {
     res.status(500).json({ error: "Failed to save data" });
   }
 });
-
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
