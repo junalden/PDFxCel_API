@@ -819,9 +819,9 @@ async function uploadToFtp(localFilePath, remoteFileName) {
 
   try {
     await client.access({
-      host: "gator4128.hostgator.com",
-      user: "PTS@technoti.net",
-      password: "Jejemon18@",
+      host: "",
+      user: "",
+      password: "",
       secure: false, // Use true if your FTP server requires FTPS
     });
 
